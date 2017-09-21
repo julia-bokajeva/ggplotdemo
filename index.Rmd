@@ -9,22 +9,165 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+# Quiz dataset
+```{r}
+library(tidyverse) #load package
+library(ggthemes)  #load package
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+#read-in a data file
+a <- read_csv("https://raw.githubusercontent.com/rstats-tartu/datasets/master/quiz.csv")
+#without Internet access use read_csv("data/quiz.csv")
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+#change column names
+colnames(a) <- c("subject","years","supervisor","stat_course","data_anal","R_prof","x","x1","x2","x3","x4","x5",
+                 "x6")
 
-```{r cars}
-summary(cars)
+#select and keep only the mentioned variables in dataset "a": exclude the "x" column
+a <- select(a,-x)
+
+#add new variable "diff_x1_x2" into dataset "a"
+a <- mutate(a, diff_x1_x2=x1-x2)
+
+#drop any non-numeric characters before or after the first number
+a$years <- parse_number(a$years)
+
+a
 ```
 
-## Including Plots
+# Plots with base graphics
+```{r}
+#plot continous values in the column "x1" of the dataset "a"
+plot(a$x1)
+```
+```{r}
+#barplot for the column "data_anal" in the dataset "a"
+barplot(table(a$data_anal))
+```
+```{r}
+#convert the type of the column from character to factor
+a$supervisor <- as.factor(a$supervisor)
+#to change back into character, use as.character
 
-You can also embed plots, for example:
+#divide the graphics window into 1 row and 2 columns
+par(mfrow=c(1,2))
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+#boxplot for columns "supervisor" x "x1" in dataset "a"
+#both functions give the same result
+plot(a$supervisor, a$x1)
+boxplot(a$x1~a$supervisor)
+```
+```{r}
+#dots in a line
+stripchart(a$x1)
+```
+```{r}
+#divide the graphics window into 1 row and 2 columns
+par(mfrow=c(1,2))
+
+#histogram for the column "x1"
+hist(a$x1)
+
+#histogram with defined number of breaks/bars
+#useful when R doesn't guess it right
+hist(a$x1, breaks=15)
+```
+```{r}
+#divide the graphics window into 1 row and 2 columns
+par(mfrow=c(1,2))
+
+#plot two variables, first variable defines the x-axis, second defines the y-axis (by default)
+plot(x=a$x1, y=a$x2)
+plot(a$x1, a$x2)
+```
+```{r}
+#drawing a line, based on a linear model for the data
+plot(a$x1, a$x2)
+abline(lm(a$x2~a$x1))
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+# ggplot2
+```{r}
+#save a dataset included in base R under the specified name
+iris <- iris
+
+#convert the data into data.frame
+iris <- as_tibble(iris)
+
+#show the structure of chosen data
+str(iris)
+```
+```{r}
+#create a base for a plot
+iris %>% ggplot()
+```
+```{r}
+#create the axes for a plot
+iris %>% ggplot(aes(x=Sepal.Length, y=Sepal.Width))
+```
+```{r}
+#include data, creating a scatter plot
+iris %>% ggplot(aes(x=Sepal.Length, y=Sepal.Width))+geom_point()
+```
+```{r}
+#draw a line with confidence interval across data points
+iris %>% ggplot(aes(x=Sepal.Length, y=Sepal.Width))+geom_point()+geom_smooth()
+```
+```{r}
+#draw a line of chosen colour fitting a linear model excluding confidence interval
+iris %>% ggplot(aes(x=Sepal.Length, y=Sepal.Width))+geom_point()+geom_smooth(method="lm", se=F, color="red")
+```
+```{r}
+#add a theme to the plot
+iris %>% ggplot(aes(x=Sepal.Length, y=Sepal.Width))+geom_point()+geom_smooth(method="lm", se=F, color="red")+theme_classic()
+```
+```{r}
+#tufte theme
+iris %>% ggplot(aes(x=Sepal.Length, y=Sepal.Width))+geom_point()+geom_smooth(method="lm", se=F, color="red")+theme_tufte()
+```
+```{r}
+#colour the data points by chosen variable
+ggplot(iris, aes(Sepal.Length, Sepal.Width, color=Species))+geom_point()+geom_smooth(method="lm", se=F, color="red")+theme_tufte()
+```
+```{r}
+#add a regression line with confidence interval for chosen species
+ggplot(iris, aes(Sepal.Length, Sepal.Width))+geom_point()+geom_smooth(data=filter(iris, Species %in% c("virginica","versicolor")), method="lm")+theme_bw()
+```
+```{r}
+#a regression line with confidence interval for each of the "Species"
+ggplot(iris, aes(Sepal.Length, Sepal.Width, color=Species))+geom_point()+geom_smooth(method="lm")
+```
+```{r}
+#filter and save data by defined variable value
+iris1 <- iris %>% filter(Species=="setosa")
+
+#plot all data but draw a regression line with confidence interval for previously filtered data
+ggplot(iris, aes(Sepal.Length, Sepal.Width, color=Species))+geom_point()+geom_smooth(data=iris1, method="lm")
+```
+```{r}
+#convert a dataset included in base R into data.frame and save it under the specified name
+midwest <- as_tibble(midwest) %>% select(percwhite,percbelowpoverty,poptotal)
+
+#plot % of white people against % of people below poverty level
+#adjust point size by total population
+ggplot(midwest, aes(percwhite,percbelowpoverty))+geom_point(aes(size=poptotal))
+```
+```{r}
+#weighted line (red) is different from an ordinary one (blue)
+ggplot(midwest, aes(percwhite,percbelowpoverty))+geom_point(aes(size=poptotal))+geom_smooth(aes(weight=poptotal), method="lm",size=1)+geom_smooth(method="lm", color="red")
+```
+```{r}
+#save a plot under the specified name
+sp <- ggplot(data=mtcars, aes(x=wt, y=mpg))+geom_point()
+
+#add a horizontal line to the saved plot
+#for a vertical line, use geom_vline, also requires an intercept
+sp+geom_hline(yintercept=20,linetype="dashed", color="red", size=2)
+```
+```{r}
+#draw a line with specified start and end points
+sp+geom_segment(x=3,y=15,xend=4,yend=25)
+```
+```{r}
+#draw a line and add an arrowhead
+sp+geom_segment(aes(x=3,y=15,xend=4,yend=25),arrow=arrow(length=unit(0.5, "cm")))
+```
